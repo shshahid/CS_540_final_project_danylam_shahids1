@@ -24,8 +24,6 @@ data = pd.read_csv('spam_emails_dataset_5.csv')
 if data.empty:
     print("ERROR: dataset not loaded.\n")
     exit(1)
-    print("ERROR: dataset not loaded.\n")
-    exit(1)
 else:
     print("SUCCESS: Dataset loaded.")
     print(data.head())
