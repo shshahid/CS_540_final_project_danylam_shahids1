@@ -158,7 +158,11 @@ plt.show()
 # Tokenize, clean punctuation and stop words
 ham_emails = data[data['res'] == 0]['text'].str.lower()
 ham_emails = ham_emails.apply(word_tokenize)
+# remove stopwords, punctuation
 ham_emails = ham_emails.apply(lambda x: [word for word in x if word not in cleanstopwords and word not in string.punctuation])
+# remove anything but letters and numbers
+spam_emails = spam_emails.apply(lambda x: [re.sub(r'[^a-zA-Z0-9\s]', '', word) for word in x])
+spam_emails = spam_emails.apply(lambda x: [re.sub(r'escapenumber|escapelong', '', word) for word in x])
 ham_emails = ham_emails.apply(lambda x: ' '.join(x))
 # Combine to string
 ham_text = ' '.join(ham_emails)
