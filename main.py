@@ -2,11 +2,21 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
-from sklearn.model_selection import train_test_split, cross_val_score, StratifiedKFold, learning_curve, LearningCurveDisplay
+from sklearn.model_selection import train_test_split, cross_val_score, StratifiedKFold, learning_curve
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression, SGDClassifier
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix, roc_auc_score, roc_curve, f1_score
+from wordcloud import WordCloud, STOPWORDS
+from collections import Counter
+import string
+import re
+import nltk
+from nltk.corpus import stopwords
+nltk.download('stopwords')
+nltk.download('punkt_tab')
+from nltk.tokenize import word_tokenize
+
 
 # LOAD DATASET - should be in same directory as main.py
 data = pd.read_csv('spam_emails_dataset_5.csv')
@@ -107,6 +117,71 @@ print("\nCross-Validation Results:")
 print(f"F1 scores across 5 folds: {cv_scores}")
 print(f"Mean CV F1: {cv_scores.mean():.3f} (+/- {cv_scores.std() * 2:.3f})")
 
+# DATA VISUALIZATION
+# Remove extra words we do not want
+cleanstopwords = set(stopwords.words('english'))
+cleanstopwords.update(["subject","nbsp","will"])
+
+# Word cloud for spam
+# Tokenize, clean punctuation and stop words
+spam_emails = data[data['res'] == 1]['text'].str.lower()
+spam_emails = spam_emails.apply(word_tokenize)
+# remove stopwords, punctuation
+spam_emails = spam_emails.apply(lambda x: [word for word in x if word not in cleanstopwords and word not in string.punctuation])
+# remove anything but letters and numbers
+spam_emails = spam_emails.apply(lambda x: [re.sub(r'[^a-zA-Z0-9\s]', '', word) for word in x])
+spam_emails = spam_emails.apply(lambda x: [re.sub(r'escapenumber|escapelong', '', word) for word in x])
+spam_emails = spam_emails.apply(lambda x: ' '.join(x))
+# Combine to string
+spam_text = ' '.join(spam_emails)
+# Use wordcloud's information for counter
+spam_word_counts = Counter(WordCloud(stopwords=cleanstopwords, max_words=100).process_text(spam_text))
+most_common_spam = spam_word_counts.most_common(10)
+
+# Plot
+fig, ax = plt.subplots(1, 2)
+# Wordcloud
+wordcloud = WordCloud(stopwords=cleanstopwords, max_words=100, width=800, height=400, background_color='white').generate(spam_text)
+ax[0].imshow(wordcloud)
+ax[0].set_title('Word Cloud for spam emails')
+ax[0].axis('off')
+# Bar graph
+words, counts = zip(*most_common_spam)
+ax[1].bar(words, counts)
+ax[1].set_title('Top 10 most common words in spam emails')
+ax[1].set_xlabel('Words')
+ax[1].set_ylabel('Frequency')
+ax[1].tick_params('x', rotation=45)
+plt.show()
+
+# Word cloud for spam
+# Tokenize, clean punctuation and stop words
+ham_emails = data[data['res'] == 0]['text'].str.lower()
+ham_emails = ham_emails.apply(word_tokenize)
+ham_emails = ham_emails.apply(lambda x: [word for word in x if word not in cleanstopwords and word not in string.punctuation])
+ham_emails = ham_emails.apply(lambda x: ' '.join(x))
+# Combine to string
+ham_text = ' '.join(ham_emails)
+# Use wordcloud's information for counter
+ham_word_counts = Counter(WordCloud(stopwords=cleanstopwords, max_words=100).process_text(ham_text))
+most_common_ham = ham_word_counts.most_common(10)
+
+# Plot
+fig, ax = plt.subplots(1, 2)
+# Wordcloud
+wordcloud = WordCloud(stopwords=cleanstopwords, max_words=100, width=800, height=400, background_color='white').generate(ham_text)
+ax[0].imshow(wordcloud)
+ax[0].set_title('Word Cloud for ham emails')
+ax[0].axis('off')
+# Bar graph
+words, counts = zip(*most_common_ham)
+ax[1].bar(words, counts)
+ax[1].set_title('Top 10 most common words in ham emails')
+ax[1].set_xlabel('Words')
+ax[1].set_ylabel('Frequency')
+ax[1].tick_params('x', rotation=45)
+plt.show()
+
 # Confusion Matrix
 conf_matrix = confusion_matrix(Y_test, best_test_prediction)
 sns.heatmap(conf_matrix, annot=True, cbar=False, fmt='d', cmap='Blues', xticklabels=['ham', 'spam'], yticklabels=['ham', 'spam'])
@@ -124,9 +199,9 @@ for name, model in models.items():
     ax[i].plot(fpr, tpr)
     ax[i].plot([0, 1], [0, 1], '--')
     if(name == best_name):
-        ax[i].title.set_text(f'Best model: {name} (AUC = {roc_auc_score(Y_test, y_prob):.3f})')
+        ax[i].set_title(f'Best model: {name} (AUC = {roc_auc_score(Y_test, y_prob):.3f})')
     else:
-        ax[i].title.set_text(f'{name} (AUC = {roc_auc_score(Y_test, y_prob):.3f})')
+        ax[i].set_title(f'{name} (AUC = {roc_auc_score(Y_test, y_prob):.3f})')
     ax[i].grid()
     i+=1
 fig.suptitle('ROC Curves')
@@ -174,10 +249,5 @@ plt.xlabel('Number of training samples')
 plt.ylabel('Accuracy')
 plt.title(f'Learning Curve on best model: {best_name}')
 plt.legend(loc='lower right')
-
-# Alternate plot
-#LearningCurveDisplay.from_estimator(
-#    best_model, X_train_features, Y_train, train_sizes=np.linspace(0.1, 1.0, 10), cv=5, scoring="accuracy"
-#)
 plt.grid()
 plt.show()
